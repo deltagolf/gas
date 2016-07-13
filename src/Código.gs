@@ -1,3 +1,9 @@
+function main(){
+  dataCrossFill();
+  test();
+}
+
+
 function dataCrossFill() {
   
   var bookID = "14uYlNFllcNc1L2m48YsG-5aYXizdbmTPTaIZsX8iY4Q", mediaSheet = "MEDIA_FILES", mergeSheet = "DATA_MERGE", peopleSheet = "PEOPLE";
