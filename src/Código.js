@@ -1,31 +1,23 @@
+/*                                                                     PARAMETERS                                                                           */
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+
+// API EXECUTABLE ID = MPrNPyCRJpFNiIvQLQjGzp2s-YJX4HVyW
+
+/*                                                                   MAIN FUNCTIONS                                                                         */
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+
 function main(){
   dataCrossFill();
   test();
 }
-function dataCrossFill() {
-  
-  var bookID = "14uYlNFllcNc1L2m48YsG-5aYXizdbmTPTaIZsX8iY4Q", mediaSheet = "MEDIA_FILES", mergeSheet = "DATA_MERGE", peopleSheet = "PEOPLE";
-  
-  var merge = new Merge(bookID, mergeSheet);
-  var media = new Media(bookID, mediaSheet);
-  var people = new People(bookID, peopleSheet);
-  
-  var mediaData = media.contents;
-  var peopleData = people.contents;
-  var mergeData = merge.contents;
-
-  people.appearance(mergeData).addAppearance();
-  merge.addedMedia(mediaData).updateMedia();
-  merge.addedPeople(peopleData).updatePeople();
- 
-}
-
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-
 
 function test() {
   
@@ -36,6 +28,212 @@ function test() {
   var id = docFormat(masterFolderID, sourceFolderID, templateID);
   id = downloadLinks(id);
   Logger.log(id);
+}
+
+
+
+/*                                                                        OBJECTS                                                                           */
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+
+
+var People = function(id, sheet){
+  this.id = id;
+  this.sheet = sheet;
+  this.contents;
+  this.errors;
+  this.data = function(){
+    //Get values from the spreadsheet as array
+    var data = SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().getValues();
+    //Fills property "contents" with the static data array
+    this.contents = data;
+    return this;
+  };
+  this.appearance = function(merge){
+    var lengthMerge, lengthData, i, k = 1,  mergeData, dataItem, data, person, role, mergeRow, interview;
+    try{
+      data = this.contents;
+      lengthMerge = merge.length;
+      lengthData = data.length;
+      if(lengthData > 1 && lengthMerge > 1){
+        for(k; k< lengthData; k++){
+          dataItem = data[k];
+          i = 1, mergeData = [], dataItem[5] = "";
+          for(i; i<lengthMerge; i++){
+            mergeRow = merge[i];
+            person = dataItem[4];
+            role = dataItem[0];
+            interview = findPeople(person, role, mergeRow);
+            if(interview){
+              mergeData.push(interview);
+            }
+          }
+          if(mergeData.length > 0){
+            mergeData = JSON.stringify(mergeData);
+          } else {
+            mergeData = "";
+          } 
+          dataItem[5] = mergeData;
+          data[k] = dataItem; 
+        }
+      }
+      //Updates object contents with modified array
+      this.contents = data;
+      return this;
+    } 
+    catch(e){
+      this.errors = "Se ha producido el siguiente error: " + e;
+      return null;
+    }
+  };
+  this.addAppearance = function(){
+    //Updates sheet contents with object contents.
+    var addedAppearance = this.contents;
+    SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().setValues(addedAppearance);
+    //Returns the modified array
+    return addedAppearance; 
+  }
+};
+
+var Media = function(id, sheet){
+  this.id = id;
+  this.sheet = sheet;
+  this.contents;
+  this.data = function(){
+    var data = SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().getValues();
+    this.contents = data;
+    return this;
+  };
+};
+
+var Merge = function(id, sheet){
+    this.id = id;
+    this.sheet = sheet;
+    this.contents;
+    this.errors;
+    this.data = function(){
+      var data = SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().getValues();
+      this.contents = data;
+      return this;
+    };
+    this.addedMedia = function(media){
+      var lengthMedia, lengthData, i, k = 1,  mediaData, mediaItem, dataItem, data, mediaRow;
+      try{
+        data = this.contents;
+        lengthMedia = media.length;
+        lengthData = data.length;
+        if(lengthData > 1 && lengthMedia > 1){
+          for(k; k< lengthData; k++){
+            i = 1;
+            dataItem = data[k];
+            dataItem[5] = "";
+            for(i; i<lengthMedia; i++){
+              mediaRow = media[i];
+              mediaItem = {};
+              if(dataItem[0] == mediaRow[2]){
+                mediaItem.fileName = mediaRow[0],
+                  mediaItem.type = mediaRow[1],
+                    mediaItem.interview = mediaRow[2],
+                      mediaItem.duration = mediaRow[3],
+                        mediaItem.from = mediaRow[4],
+                          mediaItem.to = mediaRow[5],
+                            mediaItem.linked_to = mediaRow[6],
+                              mediaItem.doc_id = mediaRow[7];
+                
+                if(!dataItem[5]){
+                  mediaData = [];
+                }
+                mediaData.push(mediaItem);
+                dataItem[5] = mediaData;
+                data[k] = dataItem;
+              }
+            }
+            mediaData = data[k][5];
+            if(mediaData != ""){
+              data[k][5] = JSON.stringify(mediaData);
+            } else {
+              data[k][5] = null;
+            }
+          }
+        }
+        this.contents = data;
+        return this;
+      } catch(e){
+        this.errors = "Se ha producido el siguiente error: " + e;
+        return null;
+      }
+    };
+    this.updateMedia = function(){
+      var addedMedia = this.contents;
+      SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().setValues(addedMedia);
+      return addedMedia;
+    };
+    this.addedPeople = function(people){
+      var lengthPeople, lengthData, k = 1,  peopleData, dataItem, data, peopleRow, interviewers, participants, arr1, arr2;
+      data = this.contents;
+      lengthPeople = people.length;
+      lengthData = data.length;
+      if(lengthData > 1 && lengthPeople > 1){
+        for(k; k< lengthData; k++){
+          dataItem = data[k];
+          arr1 = dataItem[10];
+          arr1 = arr1.split(";");
+          arr2 = dataItem[11];
+          arr2 = arr2.split(";");
+          interviewers = getPeopleData(arr1, "I", people);
+          participants = getPeopleData(arr2, "P", people);
+          peopleData = interviewers.concat(participants);
+          dataItem[13] = peopleData;
+          data[k] = dataItem;
+          peopleData = data[k][13];
+          if(peopleData != ""){
+            data[k][13] = JSON.stringify(peopleData);
+          } else {
+            data[k][13] = null;
+          }
+        }
+        
+      }
+      this.contents =data;
+      return this;
+    };
+    this.updatePeople = function(){
+      var addedPeople = this.contents;
+      SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().setValues(addedPeople);
+      return addedPeople;
+    };
+  };
+
+/*                                                                PRIMARY FUNCTIONS                                                                         */
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+
+
+function dataCrossFill() {
+  //Assign initial variable values
+  var bookID = "14uYlNFllcNc1L2m48YsG-5aYXizdbmTPTaIZsX8iY4Q", mediaSheet = "MEDIA_FILES", mergeSheet = "DATA_MERGE", peopleSheet = "PEOPLE";
+  //Create object instances
+  var merge = new Merge(bookID, mergeSheet);
+  var media = new Media(bookID, mediaSheet);
+  var people = new People(bookID, peopleSheet);
+  //Initialize values
+  media.data();
+  people.data();
+  merge.data();
+  //Assign values
+  var mediaData = media.contents;
+  var peopleData = people.contents;
+  var mergeData = merge.contents;
+  //Update cell values
+  people.appearance(mergeData).addAppearance();
+  merge.addedMedia(mediaData).updateMedia();
+  merge.addedPeople(peopleData).updatePeople();
 }
 
 function docFormat(masterFolderID, sourceFolderID, templateID){
@@ -60,7 +258,7 @@ function docFormat(masterFolderID, sourceFolderID, templateID){
   //Get number of elements
   var dataMergeLength = sheetValues.length;
   //Loops through each interview
-//  for(k; k < dataMergeLength; k++){
+  /*for(k; k < dataMergeLength; k++){*/
   for(k; k < 3; k++){
     //Sub-array with interview data
     interviewArray = sheetValues[k];
@@ -224,164 +422,22 @@ function docFormat(masterFolderID, sourceFolderID, templateID){
   return masterDocId;
 }
 
-/*                                                                        OBJECTS                                                                           */
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-
-
-var Merge = function(id, sheet){
-    this.id = id;
-    this.sheet = sheet;
-    this.contents;
-    this.data = function(){
-      var data = SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().getValues();
-      this.contents = data;
-      return this;
-    };
-    this.addedMedia = function(media){
-      var lengthMedia, lengthData, i = 1, k = 1,  mediaData, mediaItem, dataItem, data, mediaRow;
-      data = this.contents;
-      lengthMedia = media.length;
-      lengthData = data.length;
-      if(lengthData > 1 && lengthMedia > 1){
-        for(k; k< lengthData; k++){
-          i = 1;
-          dataItem = data[k];
-          for(i; i<lengthMedia; i++){
-            mediaRow = media[i];
-            mediaItem = {};
-            if(dataItem[0] === mediaRow[2]){
-              mediaItem.fileName = mediaRow[0],
-                mediaItem.type = mediaRow[1],
-                  mediaItem.interview = mediaRow[2],
-                    mediaItem.duration = mediaRow[3],
-                      mediaItem.from = mediaRow[4],
-                        mediaItem.to = mediaRow[5],
-                          mediaItem.linked_to = mediaRow[6],
-                            mediaItem.doc_id = mediaRow[7];
-              
-              if(dataItem[5]){
-                mediaData = dataItem[5];
-              } else {
-                mediaData = [];
-              }
-              if(k==2)
-              mediaData.push(mediaItem);
-              dataItem[5] = mediaData;
-              data[k] = dataItem;
-            }
-          }
-          mediaData = data[k][5];
-          if(mediaData != ""){
-            data[k][5] = JSON.stringify(mediaData);
-          } else {
-            data[k][5] = null;
-          }
-        }
-      } 
-      this.contents = data;
-      return this;
-    };
-    this.updateMedia = function(){
-      var addedMedia = this.contents;
-      SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().setValues(addedMedia);
-      return addedMedia;
-    };
-    this.addedPeople = function(people){
-      var lengthPeople, lengthData, k = 1,  peopleData, dataItem, data, peopleRow, interviewers, participants, arr1, arr2;
-      data = this.contents;
-      lengthPeople = people.length;
-      lengthData = data.length;
-      if(lengthData > 1 && lengthPeople > 1){
-        for(k; k< lengthData; k++){
-          dataItem = data[k];
-          arr1 = dataItem[10];
-          arr1 = arr1.split(";");
-          arr2 = dataItem[11];
-          arr2 = arr2.split(";");
-          interviewers = getPeopleData(arr1, "I", people);
-          participants = getPeopleData(arr2, "P", people);
-          peopleData = interviewers.concat(participants);
-          dataItem[13] = peopleData;
-          data[k] = dataItem;
-          peopleData = data[k][13];
-          if(peopleData != ""){
-            data[k][13] = JSON.stringify(peopleData);
-          } else {
-            data[k][13] = null;
-          }
-        }
-        
-      }
-      this.contents =data;
-      return this;
-    };
-    this.updatePeople = function(){
-      var addedPeople = this.contents;
-      SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().setValues(addedPeople);
-      return addedPeople;
-    };
-  };
-
-var People = function(id, sheet){
-  this.id = id;
-  this.sheet = sheet;
-  this.contents;
-  this.data = function(){
-    var data = SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().getValues();
-    this.contents = data;
-    return this;
-  };
-  this.appearance = function(merge){
-    var lengthMerge, lengthData, i = 1, k = 1,  mergeData, mergeItem, dataItem, data, person, role, mergeRow, interview;
-    data = this.data();
-    lengthMerge = merge.length;
-    lengthData = data.length;
-    if(lengthData > 1 && lengthMerge > 1){
-      for(k; k< lengthData; k++){
-        i = 1, mergeData = [];
-        dataItem = data[k];
-        for(i; i<lengthMerge; i++){
-          mergeRow = merge[i];
-          person = dataItem[4];
-          role = dataItem[0];
-          interview = findPeople(person, role, mergeRow);
-          if(interview){
-            mergeData.push(interview);
-          }
-        }
-        mergeData = JSON.stringify(mergeData);
-        dataItem[5] = mergeData;
-        data[k] = dataItem;
-      }
-    } 
-    this.contents = data;
-    return this;
-  };
-  this.addAppearance = function(){
-    var addedAppearance = this.contents;
-    SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().setValues(addedAppearance);
-    return addedAppearance; 
+Array.prototype.clean = function(deleteValue) {
+  for (var i = 0; i < this.length; i++) {
+    if (this[i] == deleteValue) {         
+      this.splice(i, 1);
+      i--;
+    }
   }
+  return this;
 };
 
-var Media = function(id, sheet){
-  this.id = id;
-  this.sheet = sheet;
-  this.contents;
-  this.data = function(){
-    var data = SpreadsheetApp.openById(this.id).getSheetByName(this.sheet).getDataRange().getValues();
-    this.contents = data;
-    return this;
-  };
-};
-
-
-
-
+/*                                                                UTILITY FUNCTIONS                                                                         */
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
+/************************************************************************************************************************************************************/
 
 function findPeople(person, role, array){
   var column, peopleData, interview, length, i = 0;
@@ -405,7 +461,6 @@ function findPeople(person, role, array){
       }
     }
   } 
-
 }
 
 function getPeopleData(arr, role, peopleMatrix){
@@ -433,22 +488,6 @@ function getPeopleData(arr, role, peopleMatrix){
 }
 
 
-Array.prototype.clean = function(deleteValue) {
-  for (var i = 0; i < this.length; i++) {
-    if (this[i] == deleteValue) {         
-      this.splice(i, 1);
-      i--;
-    }
-  }
-  return this;
-};
-
-/*                                                                UTILITY FUNCTIONS                                                                         */
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
-/************************************************************************************************************************************************************/
 
 function toHHMMSS(secs){
   var time = new Date(secs * 1000);
